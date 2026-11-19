@@ -11,6 +11,10 @@ class ShoppingCart:
         self.discounted_total = None
 
     def add_item(self, sku, quantity):
+        if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity <= 0:
+            print('Invalid quantity')
+            return False
+
         product = self.repository.get_product(sku)
         if not product:
             print('Unknown product')
@@ -18,20 +22,35 @@ class ShoppingCart:
         if product.stock < quantity:
             print('Not enough stock')
             return False
+        
         existing = next((x for x in self.lines if x.sku == sku), None)
+        cart_quantity = existing.quantity if existing else 0
+
+        if product.stock < cart_quantity + quantity:
+            print('Not enough stock')
+            return False
+        
         if existing:
             existing.quantity += quantity
         else:
             self.lines.append(CartLine(sku, product.name, product.price, quantity))
+
+        self.recalculate_discount()
         return True
 
     def remove_item(self, sku, quantity=None):
+        if quantity is not None and (isinstance(quantity, bool) or not isinstance(quantity, int) or quantity <= 0):
+            print('Invalid quantity')
+            return False
+
         for line in self.lines:
             if line.sku == sku:
                 if quantity is None or quantity >= line.quantity:
                     self.lines.remove(line)
                 else:
                     line.quantity -= quantity
+
+                self.recalculate_discount()
                 return True
         print('Item not found')
         return False
@@ -45,7 +64,12 @@ class ShoppingCart:
         return self.subtotal()
 
     def apply_discount(self, code):
-        amount = self.total()
+        # Stop discount from being applied to empty cart
+        if not self.lines:
+            print('Cannot apply discount to empty cart')
+            return False
+
+        amount = self.subtotal()
         if code == 'WELCOME10':
             amount *= 0.9
         elif code == 'STUDENT20':
@@ -58,8 +82,16 @@ class ShoppingCart:
             print('Invalid coupon')
             return False
         self.discount_code = code
-        self.discounted_total = amount
+        self.discounted_total = round(max(0.0, amount), 2)
         return True
+
+    def recalculate_discount(self):
+        # Remove coupon if cart empty
+        if not self.lines:
+            self.discount_code = None
+            self.discounted_total = None
+        elif self.discount_code:
+            self.apply_discount(self.discount_code)
 
     def load(self):
         for sku, quantity in self.repository.get_saved_cart(self.user_id):
