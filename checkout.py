@@ -11,12 +11,12 @@ class CheckoutService:
         # Ensure request_id
         if not request_id:
             return OrderResult(None, 'rejected', 0)
-
-        # 
+        
         existing_order = self.repository.find_order_request_id(request_id)
+
         if existing_order:
             order_id, amount, status = existing_order
-            return OrderResult(order_id, amount, status)
+            return OrderResult(order_id, status, amount)
         
         if len(cart.lines) == 0:
             return OrderResult(None, 'empty', 0)
@@ -25,7 +25,7 @@ class CheckoutService:
         for line in cart.lines:
             product = self.repository.get_product(line.sku)
             if product.stock < line.quantity or product is None:
-                printf(f'Product out of stock')
+                print(f'Product out of stock')
                 return OrderResult(None, 'out_of_stock', 0)
         
         amount = cart.total()

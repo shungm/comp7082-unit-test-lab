@@ -60,8 +60,8 @@ class StoreRepository:
         conn.close()
         return rows
 
-    def find_order_id(self, request_id):
+    def find_order_request_id(self, request_id):
         conn = self.connect()
-        row = conn.execute('SELECT id, amount, status FROM orders WHERE request_id = ?', request_id,).fetchone()
+        row = conn.execute('SELECT id, amount, status FROM orders WHERE request_id = ?', (request_id,),).fetchone()
         conn.close()
         return row
