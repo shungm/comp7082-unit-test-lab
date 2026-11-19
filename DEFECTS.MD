@@ -24,19 +24,30 @@ cart.py
 
   
 
-checkout.py
+checkout.py + repository.py
 
 4. **In checkout method:**
 
 	- Stock permanently gets removed once added despite removing item from cart right after, checkout failures(Line 22, Line 23) - Inventory decrement before payment/checkout succeeds
 
+	**Fix:** Add method to reserve and restore stock back if order in repository.py and call the method from checkout.py when payment cancelled/declines
+
+
+checkout.py
+
 5. **In checkout method:**
 	
 	- If order/adding item when there is no stock or if order number greater than available stock. Order successfully added instead of being rejected (Line 15 - Line 20) - No order rejection
 
+	**Fix:** Add check to checkout to check current product stock before fulfilling order to catch zero stock and over ordering product
+
+checkout.py + repository.py
+
 6. **In checkout method:**
 
 	- Duplicate transactions can occur if multiple checkout calls of same order (line 29)
+
+	**Fix:** Add method in repository.py to search for existing order by request_id before checking out. In checkout method, add a check to see if existing order already exists to prevent same cart from being checked out/processed more than once.
 
   
 
@@ -45,6 +56,7 @@ repository.py
 7. **In update_stock:**
 
 	- Nothing to stop inventory from becoming negative if user adds more items in cart more than what's in inventory (Line 36)
+	**Fix:** Add condition to only subtract when there is enough inventory to update_stock method
 
 8. **In list_orders:**
 

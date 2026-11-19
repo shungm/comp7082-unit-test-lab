@@ -33,7 +33,15 @@ class StoreRepository:
 
     def update_stock(self, sku, quantity):
         conn = self.connect()
-        conn.execute('UPDATE products SET stock = stock - ? WHERE sku = ?', (quantity, sku))
+        cart = conn.execute('UPDATE products SET stock = stock - ? WHERE sku = ? AND stock >= ?', (quantity, sku, quantity))
+        conn.commit()
+        conn.close()
+        return cart.rowcount == 1  # Returns True if stock there, false if not enough stock
+
+    # Helper method to restore stock if order cancelled or fails
+    def restore_stock(self, sku, quantity):
+        conn = self.connect()
+        conn.execute('UPDATE products SET stock = stock + ? WHERE sku = ?', (quantity, sku))
         conn.commit()
         conn.close()
 
@@ -51,3 +59,9 @@ class StoreRepository:
         rows = conn.execute('SELECT id, user_id, amount, status FROM orders ORDER BY id DESC').fetchall()
         conn.close()
         return rows
+
+    def find_order_id(self, request_id):
+        conn = self.connect()
+        row = conn.execute('SELECT id, amount, status FROM orders WHERE request_id = ?', request_id,).fetchone()
+        conn.close()
+        return row
