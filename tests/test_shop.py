@@ -37,6 +37,13 @@ def test_successful_checkout_deducts_stock(test_product):
     assert cart.lines == []
 
 
+def test_cart_add_same_item_not_exceed_stock(test_product):
+    cart = ShoppingCart("user-1", test_product)
+    assert cart.add_item("LAP-01", 3) is True
+    assert cart.add_item("LAP-01", 3) is False   
+    assert cart.lines[0].quantity == 3
+
+
 def test_add_and_remove_item_rejecting_invalid_quantities(test_product):
     cart = ShoppingCart("user-1", test_product)
 
@@ -68,6 +75,13 @@ def test_discount_not_stacking(test_product):
     # Adding another item should recalculate from the updated subtotal
     assert cart.add_item("MOU-01", 1) is True
     assert cart.total() == pytest.approx(89.85 * 0.8)
+
+
+def test_coupon_not_totalling_negative(test_product):
+    cart = ShoppingCart("user-1", test_product)
+    assert cart.add_item("USB-01", 1) is True
+    assert cart.apply_discount("SAVE15") is True
+    assert cart.total() == 0
 
 
 def test_checkout_rejecting_not_enough_stock(test_product):
@@ -181,4 +195,15 @@ def test_checkout_restores_stock_on_payment_error(test_product):
     assert cart.lines[0].quantity == 3
     assert test_product.list_orders("user-1")[0][3] == "payment_error"
 
+def test_reserve_stock_rollingback_when_no_stock(test_product):
+    # First order
+    cart = ShoppingCart("user-1", test_product)
+    assert cart.add_item("MOU-01", 3) is True
+    assert cart.add_item("LAP-01", 5) is True
 
+    # Second order buying LAP-01
+    assert test_product.update_stock("LAP-01", 2) is True
+
+    assert test_product.reserve_stock(cart.lines) is False
+    assert test_product.get_product("MOU-01").stock == 20
+    assert test_product.get_product("LAP-01").stock == 3

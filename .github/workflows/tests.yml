@@ -1,0 +1,28 @@
+name: UnitTests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Use checkout@v4 and python@v5 if v6 doesn't work
+    steps:
+      - name: Get code
+        uses: actions/checkout@v4
+
+      - name: Python setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      # Run with '|' allows multiple lines
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Run unit tests
+        run: python -m pytest -q
