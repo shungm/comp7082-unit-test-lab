@@ -7,6 +7,12 @@ from payments import FakePaymentGateway
 from repository import StoreRepository
 from setup_db import initialize
 
+
+class FailingPaymentGateway(FakePaymentGateway):
+    def charge(self, amount, payment_token):
+        raise TimeoutError()
+
+
 # Setup function that is automatically passed to test functions
 @pytest.fixture
 def test_product(tmp_path):
@@ -92,9 +98,12 @@ def test_checkout_unchanged_inventory_when_checkout_fails(test_product):
 
     result = service.checkout(cart, "TEST_TOKEN", "fail-1")
 
-    # Initial stock should stay as 20
+    # Stock should stay as 20 with no changes to cart (Order declined)
     assert result.status == "declined"
     assert test_product.get_product("MOU-01").stock == 20
+    assert len(cart.lines) == 1
+    assert cart.lines[0].quantity == 4
+    assert test_product.list_orders("user-1")[0][3] == "declined"
 
 
 def test_checkout_no_duplicate_charges(test_product):
@@ -152,3 +161,24 @@ def test_list_order_missing_user_id(test_product):
 
     with pytest.raises(ValueError, match = "User ID is required"):
         test_product.list_orders(None)
+
+
+def test_checkout_restores_stock_on_payment_error(test_product):
+    cart = ShoppingCart("user-1", test_product)
+    initial_stock = test_product.get_product("MOU-01").stock
+
+    assert cart.add_item("MOU-01", 3) is True
+    cart.save()
+
+    gateway = FailingPaymentGateway()
+    service = CheckoutService(test_product, gateway)
+
+    result = service.checkout(cart, "TEST_TOKEN", "error-1")
+
+    assert result.status == "payment_error"
+    assert test_product.get_product("MOU-01").stock == initial_stock
+    assert len(cart.lines) == 1
+    assert cart.lines[0].quantity == 3
+    assert test_product.list_orders("user-1")[0][3] == "payment_error"
+
+

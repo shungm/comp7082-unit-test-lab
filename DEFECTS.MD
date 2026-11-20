@@ -40,6 +40,7 @@ checkout.py
 	- If order/adding item when there is no stock or if order number greater than available stock. Order successfully added instead of being rejected (Line 15 - Line 20) - No order rejection
 
 	**Fix:** Add check to checkout to check current product stock before fulfilling order to catch zero stock and over ordering product
+	
 
 checkout.py + repository.py
 
@@ -49,16 +50,21 @@ checkout.py + repository.py
 
 	**Fix:** Add method in repository.py to search for existing order by request_id before checking out. In checkout method, add a check to see if existing order already exists to prevent same cart from being checked out/processed more than once.
 
+7. **In checkout method:**
+	- Stock decremented before payment -> stock disappearing if checkout fails or cancelled
+
+	**Fix:** Add a check to make sure stock decrements only if payment or order is approved
+
   
 
 repository.py
 
-7. **In update_stock:**
+8. **In update_stock:**
 
 	- Nothing to stop inventory from becoming negative if user adds more items in cart more than what's in inventory (Line 36)
 	**Fix:** Add condition to only subtract when there is enough inventory to update_stock method
 
-8. **In list_orders:**
+9. **In list_orders:**
 
 	- user_id for an order is not specified so orders of all users is shown when list order called (Line 51)
 
