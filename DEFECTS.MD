@@ -40,7 +40,7 @@ checkout.py
 	- If order/adding item when there is no stock or if order number greater than available stock. Order successfully added instead of being rejected (Line 15 - Line 20) - No order rejection
 
 	**Fix:** Add check to checkout to check current product stock before fulfilling order to catch zero stock and over ordering product
-	
+
 
 checkout.py + repository.py
 
@@ -60,12 +60,15 @@ checkout.py + repository.py
 repository.py
 
 8. **In update_stock:**
-
 	- Nothing to stop inventory from becoming negative if user adds more items in cart more than what's in inventory (Line 36)
 	**Fix:** Add condition to only subtract when there is enough inventory to update_stock method
 
 9. **In list_orders:**
-
 	- user_id for an order is not specified so orders of all users is shown when list order called (Line 51)
 
 	**Fix:** Add user_id in the query in list_orders method
+
+10. **In StoreRepository class:**
+	- When more than one user checkouts at the same time, leads to mismatching of stock records in repository
+
+	**Fix::** Pass optional connection into multiple repository methods to run multiple database operations with same connection for checkout consistency

@@ -31,29 +31,42 @@ class StoreRepository:
         conn.commit()
         conn.close()
 
-    def update_stock(self, sku, quantity):
-        conn = self.connect()
-        cart = conn.execute('UPDATE products SET stock = stock - ? WHERE sku = ? AND stock >= ?', (quantity, sku, quantity))
-        conn.commit()
-        conn.close()
-        return cart.rowcount == 1  # Returns True if stock there, false if not enough stock
+    def update_stock(self, sku, quantity, conn=None):
+        own_conn = conn is None
+        conn = conn or self.connect()
+        try:
+            current_conn = conn.execute('UPDATE products SET stock = stock - ? WHERE sku = ? AND stock >= ?', (quantity, sku, quantity))
+            if own_conn:
+                conn.commit()
+            return current_conn.rowcount == 1
+        finally:
+            if own_conn:
+                conn.close()
 
     # Helper method to restore stock if order cancelled or fails
-    def restore_stock(self, sku, quantity):
-        conn = self.connect()
-        conn.execute('UPDATE products SET stock = stock + ? WHERE sku = ?', (quantity, sku))
-        conn.commit()
-        conn.close()
+    def restore_stock(self, sku, quantity, conn=None):
+        own_conn = conn is None
+        conn = conn or self.connect()
+        try:
+            current_conn = conn.execute('UPDATE products SET stock = stock + ? WHERE sku = ?', (quantity, sku))
+            if own_conn:
+                conn.commit()
+        finally:
+            if own_conn:
+                conn.close()
 
-    def save_order(self, user_id, amount, status, request_id):
-        conn = self.connect()
-        cur = conn.execute('INSERT INTO orders(user_id, amount, status, request_id) VALUES (?, ?, ?, ?)',
-                           (user_id, amount, status, request_id))
-        conn.commit()
-        order_id = cur.lastrowid
-        conn.close()
-        return order_id
-
+    def save_order(self, user_id, amount, status, request_id, conn=None):
+        own_conn = conn is None
+        conn = conn or self.connect()
+        try:
+            current_conn = conn.execute('INSERT INTO orders(user_id, amount, status, request_id) VALUES (?, ?, ?, ?)', (user_id, amount, status, request_id))
+            if own_conn:
+                conn.commit()
+            return current_conn.lastrowid
+        finally:
+            if own_conn:
+                conn.close()
+  
     def list_orders(self, user_id):
         if not user_id:
             raise ValueError("User ID is required")
@@ -67,3 +80,21 @@ class StoreRepository:
         row = conn.execute('SELECT id, amount, status FROM orders WHERE request_id = ?', (request_id,),).fetchone()
         conn.close()
         return row
+
+    def reserve_stock(self, items):
+        conn = self.connect()
+        try:
+            for item in items:
+                if not self.update_stock(item.sku, item.quantity, conn):
+                    # Rollback items processed
+                    conn.rollback()
+                    return False
+            # All items success, commit/save all
+            conn.commit()
+            return True
+        except Exception:
+            # If error found then undo everything
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
