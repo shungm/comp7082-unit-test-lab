@@ -30,16 +30,8 @@ class CheckoutService:
         
         amount = cart.total()
 
-        # Array checks cart for successful inventory reservations/deducts before processing
-        cart_reservations = []
-
-        for line in cart.lines:
-            if self.repository.update_stock(line.sku, line.quantity):
-                cart_reservations.append(line)
-            else:
-                for reserved in cart_reservations:
-                    self.repository.restore_stock(reserved.sku, reserved.quantity)
-                return OrderResult(None, 'out_of_stock', 0)
+        if not self.repository.reserve_stock(cart.lines):
+            return OrderResult(None, 'out_of_stock', 0)
 
         try:
             response = self.payment_gateway.charge(amount, payment_token)
