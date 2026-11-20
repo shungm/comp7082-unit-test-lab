@@ -61,3 +61,5 @@ repository.py
 8. **In list_orders:**
 
 	- user_id for an order is not specified so orders of all users is shown when list order called (Line 51)
+
+	**Fix:** Add user_id in the query in list_orders method

@@ -24,7 +24,7 @@ def test_successful_checkout_deducts_stock(test_product):
     gateway = FakePaymentGateway(should_approve=True)
     service = CheckoutService(test_product, gateway)
 
-    result = service.checkout(cart, "TEST_TOKEN", "req-success-1")
+    result = service.checkout(cart, "TEST_TOKEN", "success-1")
 
     assert result.status == "paid"
     assert test_product.get_product("MOU-01").stock == initial_stock - 3
@@ -74,7 +74,7 @@ def test_checkout_rejecting_not_enough_stock(test_product):
     gateway = FakePaymentGateway(should_approve=True)
     service = CheckoutService(test_product, gateway)
 
-    result = service.checkout(cart, "TEST_TOKEN", "req-stock-1")
+    result = service.checkout(cart, "TEST_TOKEN", "stock-1")
 
     assert result.status == "out_of_stock"
     assert result.order_id is None
@@ -90,7 +90,7 @@ def test_checkout_unchanged_inventory_when_checkout_fails(test_product):
     gateway = FakePaymentGateway(should_approve=False)
     service = CheckoutService(test_product, gateway)
 
-    result = service.checkout(cart, "TEST_TOKEN", "req-fail-1")
+    result = service.checkout(cart, "TEST_TOKEN", "fail-1")
 
     # Initial stock should stay as 20
     assert result.status == "declined"
@@ -104,8 +104,8 @@ def test_checkout_no_duplicate_charges(test_product):
     gateway = FakePaymentGateway(should_approve=True)
     service = CheckoutService(test_product, gateway)
 
-    first_result = service.checkout(cart, "TEST_TOKEN", "req-dup-1")
-    second_result = service.checkout(cart, "TEST_TOKEN", "req-dup-1")
+    first_result = service.checkout(cart, "TEST_TOKEN", "dup-1")
+    second_result = service.checkout(cart, "TEST_TOKEN", "dup-1")
 
     assert first_result.order_id is not None
     assert second_result.order_id == first_result.order_id
@@ -124,3 +124,31 @@ def test_checkout_rejects_missing_request_id(test_product):
     result = CheckoutService(test_product, gateway).checkout(cart, "TEST_TOKEN", None)
     assert result.status == "rejected"
     assert gateway.calls == []
+
+
+def test_list_orders_by_user_id(test_product):
+    # Test orders for 2 users: ALice and Bob
+    test_product.save_order("Alice", 59.90, "paid", "alice-1")
+    test_product.save_order("Bob", 999.99, "paid", "bob-1")
+    test_product.save_order("Alice", 9.99, "declined", "alice-2")
+
+    alice_orders = test_product.list_orders("Alice")
+    bob_orders = test_product.list_orders("Bob")
+
+    # Alice should only see her orders
+    assert len(alice_orders) == 2
+    assert all(row[1] == "Alice" for row in alice_orders)
+
+    # Bob should only see his order
+    assert len(bob_orders) == 1
+    assert bob_orders[0][1] == "Bob"
+
+
+def test_list_order_missing_user_id(test_product):
+    test_product.save_order("Alice", 50.99, "paid", "alice-1")
+
+    with pytest.raises(ValueError, match = "User ID is required"):
+        test_product.list_orders("")
+
+    with pytest.raises(ValueError, match = "User ID is required"):
+        test_product.list_orders(None)

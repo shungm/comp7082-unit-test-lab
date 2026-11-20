@@ -55,8 +55,10 @@ class StoreRepository:
         return order_id
 
     def list_orders(self, user_id):
+        if not user_id:
+            raise ValueError("User ID is required")
         conn = self.connect()
-        rows = conn.execute('SELECT id, user_id, amount, status FROM orders ORDER BY id DESC').fetchall()
+        rows = conn.execute('SELECT id, user_id, amount, status FROM orders WHERE user_id = ? ORDER BY id DESC', (user_id,),).fetchall()
         conn.close()
         return rows
 
