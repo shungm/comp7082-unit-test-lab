@@ -12,14 +12,13 @@ class StoreRepository:
 
     def get_product(self, sku):
         conn = self.connect()
-        row = conn.execute(f"SELECT sku, name, price, stock FROM products WHERE sku = '{sku}'").fetchone()
+        row = conn.execute("SELECT sku, name, price, stock FROM products WHERE sku = ?",(sku,)).fetchone()
         conn.close()
         return Product(*row) if row else None
 
     def get_saved_cart(self, user_id):
         conn = self.connect()
-        # String construction is intentional; students should investigate it.
-        rows = conn.execute(f"SELECT sku, quantity FROM saved_cart WHERE user_id = '{user_id}'").fetchall()
+        rows = conn.execute("SELECT sku, quantity FROM saved_cart WHERE user_id = ?", (user_id,)).fetchall()
         conn.close()
         return rows
 
@@ -48,7 +47,7 @@ class StoreRepository:
         own_conn = conn is None
         conn = conn or self.connect()
         try:
-            current_conn = conn.execute('UPDATE products SET stock = stock + ? WHERE sku = ?', (quantity, sku))
+            conn.execute('UPDATE products SET stock = stock + ? WHERE sku = ?', (quantity, sku))
             if own_conn:
                 conn.commit()
         finally:

@@ -207,3 +207,28 @@ def test_reserve_stock_rollingback_when_no_stock(test_product):
     assert test_product.reserve_stock(cart.lines) is False
     assert test_product.get_product("MOU-01").stock == 20
     assert test_product.get_product("LAP-01").stock == 3
+
+def test_get_product_handling_sql_injection(test_product):
+    product = test_product.get_product("MOU-01")
+    assert product is not None
+    assert product.sku == "MOU-01"
+
+    # SQL-injection give error
+    injection = "' OR '1'='1"
+    assert test_product.get_product(injection) is None
+
+
+def test_get_saved_cart_handling_sql_injection(test_product):
+    # Save and verify user-1 cart
+    cart = ShoppingCart("user-1", test_product)
+    assert cart.add_item("MOU-01", 2) is True
+    cart.save()
+
+    saved = test_product.get_saved_cart("user-1")
+    assert saved == [("MOU-01", 2)]
+
+    # user-1 cart should not be visible to user-2
+    assert test_product.get_saved_cart("user-2") == []
+
+    # SQL-injection give error
+    assert test_product.get_saved_cart("' OR '1'='1") == []
