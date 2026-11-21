@@ -1,5 +1,5 @@
 
-cart.py
+File(s): cart.py
 
 1. **In add_item and remove_item methods:**
 
@@ -24,7 +24,7 @@ cart.py
 
   
 
-checkout.py + repository.py
+File(s): checkout.py + repository.py
 
 4. **In checkout method:**
 
@@ -33,7 +33,7 @@ checkout.py + repository.py
 	**Fix:** Add method to reserve and restore stock back if order in repository.py and call the method from checkout.py when payment cancelled/declines
 
 
-checkout.py
+File(s): checkout.py
 
 5. **In checkout method:**
 	
@@ -42,7 +42,7 @@ checkout.py
 	**Fix:** Add check to checkout to check current product stock before fulfilling order to catch zero stock and over ordering product
 
 
-checkout.py + repository.py
+File(s): checkout.py + repository.py
 
 6. **In checkout method:**
 
@@ -57,7 +57,7 @@ checkout.py + repository.py
 
   
 
-repository.py
+File(s): repository.py
 
 8. **In update_stock:**
 	- Nothing to stop inventory from becoming negative if user adds more items in cart more than what's in inventory (Line 36)
@@ -71,4 +71,9 @@ repository.py
 10. **In StoreRepository class:**
 	- When more than one user checkouts at the same time, leads to mismatching of stock records in repository
 
-	**Fix::** Pass optional connection into multiple repository methods to run multiple database operations with same connection for checkout consistency
+	**Fix::** Pass optional connection into multiple repository methods to run multiple database operations with same connection for checkout consistency. A shared data base connection for operations in a transaction was used along with locking transactions and making sure stock updates are conditional
+
+11. **getproduct() and get_saved_cart() methods:**
+	- Security vulnerability because the SQL queries uses user-controlled values being insert directly into SQL statements. Attackers can read or edit any data if the schema is known.
+
+	**Fix:** Change the query into parametized queries instead of f-string so they are treated as data instead of executable SQL
