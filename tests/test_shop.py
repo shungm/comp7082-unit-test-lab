@@ -1,5 +1,5 @@
-import sqlite3
 import pytest
+import threading
 
 from cart import ShoppingCart
 from checkout import CheckoutService
@@ -59,6 +59,29 @@ def test_add_and_remove_item_rejecting_invalid_quantities(test_product):
     assert cart.remove_item("MOU-01", 0) is False
     assert cart.remove_item("MOU-01", -1) is False
     assert cart.lines[0].quantity == 3
+
+
+def test_add_up_to_exact_stock_then_one_more(test_product):
+    cart = ShoppingCart("u", test_product)
+    assert cart.add_item("LAP-01", 3) is True
+    assert cart.add_item("LAP-01", 2) is True
+    assert cart.add_item("LAP-01", 1) is False
+
+
+def test_update_stock_never_goes_negative(test_product):
+    assert test_product.update_stock("LAP-01", 6) is False
+    assert test_product.get_product("LAP-01").stock == 5
+    assert test_product.update_stock("LAP-01", 5) is True
+    assert test_product.update_stock("LAP-01", 1) is False
+    assert test_product.get_product("LAP-01").stock == 0
+
+
+def test_same_coupon_twice(test_product):
+    cart = ShoppingCart("u", test_product)
+    cart.add_item("MOU-01", 2)
+    cart.apply_discount("WELCOME10")
+    cart.apply_discount("WELCOME10")
+    assert cart.total() == pytest.approx(59.90 * 0.9) 
 
 
 def test_discount_not_stacking(test_product):
@@ -232,3 +255,64 @@ def test_get_saved_cart_handling_sql_injection(test_product):
 
     # SQL-injection give error
     assert test_product.get_saved_cart("' OR '1'='1") == []
+
+
+def test_concurrent_reserve_stock_prevents_overselling(test_product):
+    # Starts with 5 in stock; two both threads try to get 4
+    cart_a = ShoppingCart("user-a", test_product)
+    cart_b = ShoppingCart("user-b", test_product)
+    assert cart_a.add_item("LAP-01", 4) is True
+    assert cart_b.add_item("LAP-01", 4) is True
+
+    barrier = threading.Barrier(2)
+    results = []
+    lock = threading.Lock()
+
+    def worker(lines):
+        barrier.wait()
+        reserved = test_product.reserve_stock(lines)
+        with lock:
+            results.append(reserved)
+
+    t1 = threading.Thread(target=worker, args=(cart_a.lines,))
+    t2 = threading.Thread(target=worker, args=(cart_b.lines,))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    # Only one reservation should save
+    assert sorted(results) == [False, True]
+    assert test_product.get_product("LAP-01").stock == 1
+
+
+def test_concurrent_checkouts_prevent_overselling(test_product):
+    # Two separate carts
+    barrier = threading.Barrier(2)
+    checkout_results = []
+    lock = threading.Lock()
+
+    def run_checkout(user_id, request_id):
+        cart = ShoppingCart(user_id, test_product)
+        assert cart.add_item("LAP-01", 4) is True
+        gateway = FakePaymentGateway(should_approve=True)
+        service = CheckoutService(test_product, gateway)
+
+        barrier.wait()
+        res = service.checkout(cart, "TEST_TOKEN", request_id)
+        with lock:
+            checkout_results.append((user_id, res))
+
+    t1 = threading.Thread(target=run_checkout, args=("user-1", "req-conc-1"))
+    t2 = threading.Thread(target=run_checkout, args=("user-2", "req-conc-2"))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    statuses = sorted(res.status for _, res in checkout_results)
+    assert statuses == ["out_of_stock", "paid"]
+    assert test_product.get_product("LAP-01").stock == 1
+
+    # Only successful payment should save order
+    assert len(test_product.list_orders("user-1")) + len(test_product.list_orders("user-2")) == 1
