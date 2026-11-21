@@ -14,15 +14,19 @@ File(s): cart.py
 
 	- No check against stacking the same coupon multiple times
 	
+	
 	**Fix**: In the apply_discount method, use "self.subtotal" instead of "self.total()" for the discount calculation because "self.total()" includes discount already. Also add a helper method to reapply discount code to recalculate the discounted total if changes are made to cart.
+
 
 3. **In add_item method**
 
 	- When adding more of the same item, the numbers added can exceed what is in the inventory - items in existing cart not considered for the total amount of stock. (Line 18 - Line 23)
 
+	
 	**Fix**: Add a check to see if the stock in the cart exceeds the amount in inventory in 
 
   
+
 
 File(s): checkout.py + repository.py
 
@@ -30,7 +34,11 @@ File(s): checkout.py + repository.py
 
 	- Stock permanently gets removed once added despite removing item from cart right after, checkout failures(Line 22, Line 23) - Inventory decrement before payment/checkout succeeds
 
+	
 	**Fix:** Add method to reserve and restore stock back if order in repository.py and call the method from checkout.py when payment cancelled/declines
+
+
+
 
 
 File(s): checkout.py
@@ -40,6 +48,8 @@ File(s): checkout.py
 	- If order/adding item when there is no stock or if order number greater than available stock. Order successfully added instead of being rejected (Line 15 - Line 20) - No order rejection
 
 	**Fix:** Add check to checkout to check current product stock before fulfilling order to catch zero stock and over ordering product
+
+
 
 
 File(s): checkout.py + repository.py
@@ -56,22 +66,26 @@ File(s): checkout.py + repository.py
 	**Fix:** Add a check to make sure stock decrements only if payment or order is approved
 
   
-
 File(s): repository.py
 
 8. **In update_stock:**
 	- Nothing to stop inventory from becoming negative if user adds more items in cart more than what's in inventory (Line 36)
+	
+	
 	**Fix:** Add condition to only subtract when there is enough inventory to update_stock method
+
 
 9. **In list_orders:**
 	- user_id for an order is not specified so orders of all users is shown when list order called (Line 51)
 
 	**Fix:** Add user_id in the query in list_orders method
 
+
 10. **In StoreRepository class:**
 	- When more than one user checkouts at the same time, leads to mismatching of stock records in repository
 
-	**Fix::** Pass optional connection into multiple repository methods to run multiple database operations with same connection for checkout consistency. A shared data base connection for operations in a transaction was used along with locking transactions and making sure stock updates are conditional
+	**Fix::** Pass optional connection into multiple repository methods to run multiple database operations with same connection for checkout consistency. A shared data base connection for operations in a transaction was used along with locking transactions and making 	sure stock updates are conditional
+
 
 11. **getproduct() and get_saved_cart() methods:**
 	- Security vulnerability because the SQL queries uses user-controlled values being insert directly into SQL statements. Attackers can read or edit any data if the schema is known.
