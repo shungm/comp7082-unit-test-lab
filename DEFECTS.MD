@@ -76,4 +76,4 @@ File(s): repository.py
 11. **getproduct() and get_saved_cart() methods:**
 	- Security vulnerability because the SQL queries uses user-controlled values being insert directly into SQL statements. Attackers can read or edit any data if the schema is known.
 
-	**Fix:** Change the query into parametized queries instead of f-string so they are treated as data instead of executable SQL
+	**Fix:** Change the query into parameterized queries instead of f-string so they are treated as data instead of executable SQL
