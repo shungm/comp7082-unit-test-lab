@@ -8,6 +8,7 @@ from repository import StoreRepository
 from setup_db import initialize
 
 
+# Simulate gateway crashing to test checkout() for when payment fails
 class FailingPaymentGateway(FakePaymentGateway):
     def charge(self, amount, payment_token):
         raise TimeoutError()
@@ -303,8 +304,8 @@ def test_concurrent_checkouts_prevent_overselling(test_product):
         with lock:
             checkout_results.append((user_id, res))
 
-    t1 = threading.Thread(target=run_checkout, args=("user-1", "req-conc-1"))
-    t2 = threading.Thread(target=run_checkout, args=("user-2", "req-conc-2"))
+    t1 = threading.Thread(target=run_checkout, args=("user-1", "conc-1"))
+    t2 = threading.Thread(target=run_checkout, args=("user-2", "conc-2"))
     t1.start()
     t2.start()
     t1.join()
